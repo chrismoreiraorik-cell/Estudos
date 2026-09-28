@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0ea5e9">
+<title>Estuda IA — Pesquisa, Cards e Provas</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  :root{
+    --bg:#f4f7fb;--card:#fff;--text:#1e2333;--muted:#6b7280;--line:#e5e9f1;
+    --brand:#0ea5e9;--brand-2:#38bdf8;--ok:#10b981;--danger:#ef4444;--warn:#f59e0b;
+    --radius:16px;--shadow:0 1px 2px rgba(16,24,40,.04),0 8px 24px rgba(16,24,40,.06);
+  }
+  html,body{margin:0;padding:0;}
+  body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;
+    padding-bottom:env(safe-area-inset-bottom);}
+  .container{max-width:900px;margin:0 auto;padding:0 16px;}
+
+  header{position:sticky;top:0;z-index:30;background:rgba(244,247,251,.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);}
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 0;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .logo{font-size:1.5rem;line-height:1;}
+  .brand h1{margin:0;font-size:1.1rem;letter-spacing:-.02em;}
+  .sub{margin:2px 0 0;font-size:.72rem;color:var(--muted);}
+  .api-status{font-size:.72rem;font-weight:800;padding:5px 10px;border-radius:999px;}
+  .api-status.ok{background:#d1fae5;color:#065f46;}
+  .api-status.bad{background:#fee2e2;color:#991b1b;}
+  .api-status.check{background:#fef3c7;color:#92400e;}
+
+  .tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{border:none;background:transparent;font:inherit;font-weight:700;color:var(--muted);
+    padding:10px 14px;border-radius:12px 12px 0 0;cursor:pointer;display:inline-flex;
+    align-items:center;gap:6px;border-bottom:3px solid transparent;transition:.15s;
+    white-space:nowrap;font-size:.86rem;}
+  .tab.active{color:var(--brand);border-bottom-color:var(--brand);}
+
+  main{padding:20px 16px 100px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:18px;margin-bottom:16px;}
+  .card h2{margin:0 0 4px;font-size:1rem;letter-spacing:-.01em;}
+  .card p.hint{margin:6px 0 12px;color:var(--muted);font-size:.84rem;line-height:1.5;}
+
+  .btn{border:1px solid transparent;border-radius:12px;padding:11px 16px;font:inherit;
+    font-weight:700;font-size:.88rem;cursor:pointer;transition:.15s;display:inline-flex;
+    align-items:center;justify-content:center;gap:6px;}
+  .btn.primary{background:var(--brand);color:#fff;}
+  .btn.primary:hover{background:#0284c7;}
+  .btn.primary:disabled{opacity:.55;cursor:not-allowed;}
+  .btn.ghost{background:#fff;border-color:var(--line);color:var(--text);}
+  .btn.ghost:hover{background:#f8fafc;}
+  .btn.small{padding:7px 12px;font-size:.78rem;}
+  .btn.danger{color:var(--danger);}
+
+  input,select,textarea{
+    width:100%;font:inherit;font-size:.92rem;padding:11px 12px;
+    border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--text);
+    outline:none;transition:.15s;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(14,165,233,.12);}
+  textarea{resize:vertical;font-family:inherit;}
+  label{display:block;font-size:.72rem;font-weight:800;text-transform:uppercase;
+    letter-spacing:.05em;color:var(--muted);margin-bottom:6px;}
+  .grid{display:grid;gap:12px;}
+  .grid.cols-2{grid-template-columns:1fr 1fr;}
+  @media (max-width:480px){.grid.cols-2{grid-template-columns:1fr;}}
+
+  .check-row{display:flex;align-items:center;gap:8px;padding:10px 12px;
+    border:1px solid var(--line);border-radius:12px;margin-bottom:8px;cursor:pointer;
+    background:#fff;transition:.15s;}
+  .check-row:hover{background:#f8fafc;}
+  .check-row input{width:auto;margin:0;}
+  .check-row .lbl{flex:1;font-size:.9rem;font-weight:600;}
+
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid #fff;
+    border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .output-box{background:#fafbfd;border:1px solid var(--line);border-radius:12px;
+    padding:14px;margin-top:14px;font-size:.9rem;line-height:1.6;white-space:pre-wrap;
+    word-break:break-word;max-height:600px;overflow-y:auto;}
+  .output-box h3{margin:0 0 8px;font-size:.92rem;color:var(--brand);}
+  .output-box ul,.output-box ol{margin:8px 0;padding-left:22px;}
+  .output-box code{background:#eef2f7;padding:2px 5px;border-radius:4px;font-size:.85em;}
+  .output-box strong{color:#111827;}
+
+  .flashcard{background:linear-gradient(135deg,#fff,#f0f9ff);
+    border:2px solid var(--line);border-radius:20px;padding:32px 20px;min-height:200px;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    font-size:1.1rem;font-weight:600;cursor:pointer;transition:.2s;line-height:1.4;}
+  .flashcard.flipped{background:linear-gradient(135deg,#ecfeff,#cffafe);border-color:var(--brand);}
+  .fc-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:14px;}
+  .fc-actions button{padding:12px 6px;font-size:.78rem;border-radius:10px;border:none;
+    font-weight:800;cursor:pointer;color:#fff;}
+  .fc-actions .again{background:#ef4444;}
+  .fc-actions .hard{background:#f59e0b;}
+  .fc-actions .good{background:#10b981;}
+  .fc-actions .easy{background:#3b82f6;}
+
+  .card-row{display:flex;align-items:flex-start;gap:10px;padding:12px;
+    background:#fafbfd;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;}
+  .card-row .info{flex:1;min-width:0;}
+  .card-row .front{font-weight:700;font-size:.9rem;word-break:break-word;}
+  .card-row .back{font-size:.82rem;color:var(--muted);margin-top:4px;word-break:break-word;}
+
+  .empty{text-align:center;padding:40px 16px;color:var(--muted);font-size:.9rem;line-height:1.6;}
+  .empty .big{font-size:2.2rem;display:block;margin-bottom:10px;}
+
+  .progress-steps{display:flex;gap:6px;margin-top:12px;font-size:.74rem;font-weight:700;}
+  .step{flex:1;padding:6px;border-radius:6px;background:#eef2f7;color:var(--muted);text-align:center;}
+  .step.active{background:var(--brand);color:#fff;}
+  .step.done{background:var(--ok);color:#fff;}
+
+  .quiz-q{padding:14px;border:1px solid var(--line);border-radius:12px;margin-bottom:12px;background:#fff;}
+  .quiz-q .qt{font-weight:700;font-size:.92rem;margin-bottom:10px;}
+  .quiz-opt{display:flex;align-items:flex-start;gap:8px;padding:9px 12px;
+    border:1px solid var(--line);border-radius:10px;margin-bottom:6px;cursor:pointer;
+    font-size:.88rem;transition:.15s;background:#fff;}
+  .quiz-opt:hover{background:#f8fafc;}
+  .quiz-opt.selected{border-color:var(--brand);background:#f0f9ff;}
+  .quiz-opt.correct{border-color:var(--ok);background:#ecfdf5;font-weight:700;}
+  .quiz-opt.wrong{border-color:var(--danger);background:#fef2f2;text-decoration:line-through;opacity:.8;}
+  .quiz-expl{font-size:.82rem;color:var(--muted);background:#f8fafc;padding:8px 12px;
+    border-radius:8px;margin-top:8px;line-height:1.5;}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:#1e2333;color:#fff;padding:11px 20px;border-radius:12px;font-size:.86rem;
+    font-weight:700;opacity:0;transition:opacity .3s;z-index:100;pointer-events:none;
+    max-width:90vw;text-align:center;}
+  .toast.show{opacity:1;}
+
+  .file-drop{border:2px dashed var(--line);border-radius:14px;padding:26px 16px;text-align:center;
+    background:#fafbfd;cursor:pointer;transition:.15s;}
+  .file-drop:hover,.file-drop.drag{border-color:var(--brand);background:#f0f9ff;}
+  .file-drop .ico{font-size:1.8rem;display:block;margin-bottom:8px;}
+  .file-drop small{display:block;color:var(--muted);font-size:.78rem;margin-top:6px;}
+
+  .subject-tag{display:inline-block;font-size:.7rem;font-weight:700;padding:3px 8px;
+    border-radius:999px;background:#eef2f7;color:#475569;margin-right:4px;}
+  .subject-tag.conc{background:#ede9fe;color:#6d28d9;}
+  .subject-tag.ing{background:#dbeafe;color:#1e40af;}
+  .subject-tag.ti{background:#d1fae5;color:#065f46;}
+  .subject-tag.esp{background:#fef3c7;color:#92400e;}
+  .subject-tag.cosm{background:#fce7f3;color:#9d174d;}
+  .subject-tag.outros{background:#f1f5f9;color:#475569;}
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:200;
+  align-items:center;justify-content:center;padding:16px;}
+.modal-back.show{display:flex;}
+.modal{background:#fff;border-radius:20px;padding:20px;max-width:620px;width:100%;
+  max-height:90vh;overflow-y:auto;}
+.modal h2{margin:0 0 12px;font-size:1.1rem;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="container bar">
+    <div class="brand">
+      <span class="logo">🧠</span>
+      <div>
+        <h1>Estuda IA</h1>
+        <p class="sub">Pesquisa, cards e provas geradas por IA</p>
+      </div>
+    </div>
+    <span class="api-status check" id="apiStatus">● Verificando...</span>
+  </div>
+  <div class="container">
+    <nav class="tabs">
+      <button class="tab active" data-view="generate">🎯 Gerar</button>
+      <button class="tab" data-view="file">📄 Arquivo</button>
+      <button class="tab" data-view="cards">🃏 Cards</button>
+      <button class="tab" data-view="quizzes">📝 Provas</button>
+      <button class="tab" data-view="config">⚙️ Ajustes</button>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ============ GERAR ============ -->
+  <section id="view-generate">
+    <div class="card">
+      <h2>🎯 Gere material sobre qualquer assunto</h2>
+      <p class="hint">A IA pesquisa na internet (Google) e cria flashcards, resumos ou mini-provas.</p>
+
+      <label>Assunto ou pergunta</label>
+      <textarea id="genTopic" rows="3" placeholder="Ex.: Leis do município de Campinas sobre IPTU e taxas municipais
+ou: Como funciona a fotossíntese?
+ou: Vocabulário de inglês para entrevista de emprego"></textarea>
+
+      <div style="margin-top:12px;">
+        <label>O que gerar</label>
+        <label class="check-row"><input type="checkbox" id="genCards" checked><span class="lbl">🃏 Flashcards</span></label>
+        <label class="check-row"><input type="checkbox" id="genSummary"><span class="lbl">📝 Resumo explicativo</span></label>
+        <label class="check-row"><input type="checkbox" id="genQuiz"><span class="lbl">❓ Mini-prova (5 questões)</span></label>
+      </div>
+
+      <div class="grid cols-2" style="margin-top:12px;">
+        <div>
+          <label>Quantidade de flashcards</label>
+          <select id="genCardCount">
+            <option value="5">5 cards</option>
+            <option value="10" selected>10 cards</option>
+            <option value="15">15 cards</option>
+            <option value="20">20 cards</option>
+          </select>
+        </div>
+        <div>
+          <label>Matéria (para organizar)</label>
+          <select id="genSubject">
+            <option value="conc">Concursos</option>
+            <option value="ing">Inglês</option>
+            <option value="esp">Espanhol</option>
+            <option value="ti">TI / ADS</option>
+            <option value="cosm">Cosmetologia</option>
+            <option value="outros" selected>Outros</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="check-row" style="margin-top:12px;">
+        <input type="checkbox" id="genSearch" checked>
+        <span class="lbl">🌐 Pesquisar na internet (recomendado para leis, notícias, dados atuais)</span>
+      </label>
+
+      <button class="btn primary" id="btnGenerate" style="width:100%;margin-top:14px;" onclick="generate()">
+        ✨ Gerar com IA
+      </button>
+
+      <div id="genOutput"></div>
+    </div>
+  </section>
+
+  <!-- ============ ARQUIVO ============ -->
+  <section id="view-file" hidden>
+    <div class="card">
+      <h2>📄 Analise um arquivo</h2>
+      <p class="hint">Suba um PDF ou TXT (até 3 MB). A IA lê, resume, explica, cria cards ou prova.</p>
+
+      <div class="file-drop" id="fileDrop">
+        <span class="ico">📎</span>
+        <b>Toque para escolher um arquivo</b>
+        <small>PDF ou TXT — máx. 3 MB</small>
+        <input type="file" id="fileInput" accept=".pdf,.txt,.md,application/pdf,text/plain" hidden>
+      </div>
+
+      <div id="fileInfo" style="margin-top:12px;font-size:.84rem;color:var(--muted);"></div>
+
+      <div style="margin-top:12px;">
+        <label>O que fazer com o arquivo</label>
+        <label class="check-row"><input type="checkbox" id="fSummary" checked><span class="lbl">📝 Resumo / explicação</span></label>
+        <label class="check-row"><input type="checkbox" id="fCards"><span class="lbl">🃏 Flashcards</span></label>
+        <label class="check-row"><input type="checkbox" id="fQuiz"><span class="lbl">❓ Mini-prova</span></label>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label>Pergunta específica (opcional)</label>
+        <input id="fQuestion" placeholder="Ex.: Quais são os prazos mencionados?">
+      </div>
+
+      <div class="grid cols-2" style="margin-top:12px;">
+        <div>
+          <label>Matéria</label>
+          <select id="fSubject">
+            <option value="conc">Concursos</option>
+            <option value="ing">Inglês</option>
+            <option value="esp">Espanhol</option>
+            <option value="ti">TI / ADS</option>
+            <option value="cosm">Cosmetologia</option>
+            <option value="outros" selected>Outros</option>
+          </select>
+        </div>
+        <div>
+          <label>Cards (se marcado)</label>
+          <select id="fCardCount">
+            <option value="5">5 cards</option>
+            <option value="10" selected>10 cards</option>
+            <option value="15">15 cards</option>
+            <option value="20">20 cards</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn primary" id="btnFile" style="width:100%;margin-top:14px;" onclick="processFile()">
+        📖 Analisar com IA
+      </button>
+
+      <div id="fileOutput"></div>
+    </div>
+  </section>
+
+  <!-- ============ CARDS ============ -->
+  <section id="view-cards" hidden>
+    <div class="card">
+      <h2>🃏 Revisão de hoje</h2>
+      <p class="hint" id="cardsDueText"></p>
+      <div id="cardsReviewArea"></div>
+    </div>
+
+    <div class="card">
+      <h2>Todos os cards <span id="cardsCount" style="color:var(--muted);font-weight:600;font-size:.85rem;"></span></h2>
+      <div style="margin-top:10px;">
+        <input id="cardsFilter" placeholder="🔍 Filtrar por frente ou verso..." oninput="renderCardsList()">
+      </div>
+      <div id="cardsList" style="margin-top:12px;"></div>
+    </div>
+  </section>
+
+  <!-- ============ PROVAS ============ -->
+  <section id="view-quizzes" hidden>
+    <div class="card">
+      <h2>📝 Suas provas</h2>
+      <p class="hint">Provas geradas pela IA. Toque para fazer.</p>
+      <div id="quizzesList"></div>
+    </div>
+  </section>
+
+  <!-- ============ CONFIG ============ -->
+  <section id="view-config" hidden>
+    <div class="card">
+      <h2>⚙️ Estado da conexão</h2>
+      <p class="hint">A chave da API fica guardada no servidor do Vercel (variável <code>GEMINI_API_KEY</code>), nunca no seu celular.</p>
+      <button class="btn ghost" style="width:100%;" onclick="checkApi()">🔄 Testar conexão</button>
+      <div id="configStatus" style="margin-top:12px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>📊 Estatísticas</h2>
+      <div id="statsBox" class="hint"></div>
+    </div>
+
+    <div class="card">
+      <h2>🧹 Dados locais</h2>
+      <p class="hint">Cards e provas ficam guardados apenas neste aparelho.</p>
+      <button class="btn ghost" style="width:100%;margin-bottom:8px;" onclick="exportData()">⬇️ Exportar backup</button>
+      <button class="btn ghost danger" style="width:100%;" onclick="wipeData()">🗑️ Apagar tudo</button>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   ESTADO
+   ========================================================= */
+const STORAGE_KEY = 'estuda-ia.v1';
+const SUBJECT_LABELS = {
+  conc:'Concursos', ing:'Inglês', esp:'Espanhol', ti:'TI/ADS',
+  cosm:'Cosmetologia', outros:'Outros'
+};
+
+function defaultState(){
+  return { cards: [], quizzes: [], history: [] };
+}
+let state = loadState();
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw){ const d = JSON.parse(raw); if (d && d.cards) return d; }
+  }catch(e){}
+  return defaultState();
+}
+function save(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const isoDate = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function subjectTag(id){
+  const cls = ['conc','ing','esp','ti','cosm'].includes(id) ? id : 'outros';
+  return `<span class="subject-tag ${cls}">${SUBJECT_LABELS[id] || 'Outros'}</span>`;
+}
+
+/* =========================================================
+   MARCAÇÃO MARKDOWN LEVE
+   ========================================================= */
+function mdToHtml(text){
+  let s = esc(text);
+  // blocos ```code```
+  s = s.replace(/```([\s\S]*?)```/g, (_, c) => `<code>${c.trim()}</code>`);
+  // negrito **texto**
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // itálico *texto*
+  s = s.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+  // títulos ### / ## / #
+  s = s.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/^##\s+(.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/^#\s+(.+)$/gm, '<h3>$1</h3>');
+  // listas
+  const lines = s.split('\n');
+  const out = [];
+  let inUl = false, inOl = false;
+  for (let line of lines){
+    const ul = line.match(/^\s*[-*]\s+(.+)/);
+    const ol = line.match(/^\s*\d+[.)]\s+(.+)/);
+    if (ul){
+      if (inOl){ out.push('</ol>'); inOl = false; }
+      if (!inUl){ out.push('<ul>'); inUl = true; }
+      out.push(`<li>${ul[1]}</li>`);
+    } else if (ol){
+      if (inUl){ out.push('</ul>'); inUl = false; }
+      if (!inOl){ out.push('<ol>'); inOl = true; }
+      out.push(`<li>${ol[1]}</li>`);
+    } else {
+      if (inUl){ out.push('</ul>'); inUl = false; }
+      if (inOl){ out.push('</ol>'); inOl = false; }
+      out.push(line);
+    }
+  }
+  if (inUl) out.push('</ul>');
+  if (inOl) out.push('</ol>');
+  return out.join('\n').replace(/\n{2,}/g, '\n');
+}
+
+/* =========================================================
+   CHAMADA À IA (via função serverless)
+   ========================================================= */
+async function callGemini(parts, opts = {}){
+  const r = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      parts,
+      useSearch: !!opts.useSearch,
+      jsonMode: !!opts.jsonMode
+    })
+  });
+  if (!r.ok){
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.error || `Erro ${r.status}`);
+  }
+  const data = await r.json();
+  if (data.error){ throw new Error(data.error.message || JSON.stringify(data.error)); }
+  const cand = data.candidates?.[0];
+  if (!cand){ throw new Error('Sem resposta da IA'); }
+  const text = cand.content?.parts?.map(p => p.text).filter(Boolean).join('\n') || '';
+  return text;
+}
+
+/* =========================================================
+   PARSER DE JSON (tolerante a markdown)
+   ========================================================= */
+function extractJson(text){
+  // Remove cercas ```json ... ```
+  let s = text.trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence) s = fence[1].trim();
+  // Encontra o primeiro { e o último }
+  const first = s.indexOf('{');
+  const last = s.lastIndexOf('}');
+  if (first >= 0 && last > first){
+    s = s.slice(first, last + 1);
+  }
+  return JSON.parse(s);
+}
+
+/* =========================================================
+   GERAR
+   ========================================================= */
+async function generate(){
+  const topic = $('genTopic').value.trim();
+  if (!topic){ toast('Digite um assunto'); return; }
+
+  const wantCards = $('genCards').checked;
+  const wantSummary = $('genSummary').checked;
+  const wantQuiz = $('genQuiz').checked;
+  if (!wantCards && !wantSummary && !wantQuiz){
+    toast('Marque ao menos uma opção'); return;
+  }
+  const useSearch = $('genSearch').checked;
+  const cardCount = Number($('genCardCount').value);
+  const subjectId = $('genSubject').value;
+
+  const btn = $('btnGenerate');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Gerando...';
+  $('genOutput').innerHTML = '<div class="output-box" style="text-align:center;">⏳ Consultando a IA...' +
+    (useSearch ? ' (pesquisando na internet)' : '') + '</div>';
+
+  try {
+    // 1) Resumo (texto livre, se pedido)
+    if (wantSummary){
+      const prompt = `Você é um professor didático e preciso. Faça um resumo explicativo sobre:
+
+"${topic}"
+
+Regras:
+- Responda em português do Brasil.
+- Use títulos, subtítulos, listas e destaques em **negrito**.
+- Se houver pontos importantes, mencione-os em uma seção "⚠️ Importante".
+- Cite fontes quando usar pesquisa na web.
+- Seja completo mas objetivo (300-700 palavras).`;
+
+      const text = await callGemini([{ text: prompt }], { useSearch });
+      $('genOutput').innerHTML = `<div class="output-box">${mdToHtml(text)}</div>` +
+        '<div style="margin-top:14px;font-size:.82rem;color:var(--muted);">⬇️ Gerando próximos itens...</div>';
+    }
+
+    // 2) Flashcards
+    if (wantCards){
+      const prompt = `Gere ${cardCount} flashcards para estudo sobre:
+
+"${topic}"
+
+Regras:
+- Cada flashcard tem "front" (pergunta curta e clara) e "back" (resposta direta).
+- Perguntas variadas: definição, aplicação, exemplo, pegadinha.
+- Se for sobre leis ou dados atuais, use pesquisa na web.
+- Idioma: português do Brasil.
+
+Responda APENAS com JSON válido (sem markdown, sem cercas) neste formato:
+{"flashcards":[{"front":"...","back":"..."}]}`;
+
+      const text = await callGemini([{ text: prompt }], { useSearch });
+      const data = extractJson(text);
+      const cards = data.flashcards || [];
+      const added = [];
+      cards.forEach(c => {
+        if (!c.front || !c.back) return;
+        const card = {
+          id: uid(),
+          subjectId,
+          topic,
+          front: String(c.front).trim(),
+          back: String(c.back).trim(),
+          ease: 2.5, interval: 0, reps: 0,
+          nextReview: isoDate(),
+          createdAt: new Date().toISOString()
+        };
+        state.cards.push(card);
+        added.push(card);
+      });
+      save();
+      const outHtml = `<div class="output-box" style="background:#ecfdf5;">
+        ✅ <b>${added.length} flashcards adicionados</b> à aba Cards.<br>
+        <small style="color:#065f46;">Matéria: ${SUBJECT_LABELS[subjectId]}</small>
+      </div>`;
+      $('genOutput').innerHTML = ($('genOutput').innerHTML || '') + outHtml;
+    }
+
+    // 3) Mini-prova
+    if (wantQuiz){
+      const prompt = `Crie uma mini-prova com 5 questões de múltipla escolha sobre:
+
+"${topic}"
+
+Regras:
+- Cada questão tem 4 alternativas (A, B, C, D) e apenas uma correta.
+- Forneça uma explicação curta da resposta correta.
+- Idioma: português do Brasil.
+
+Responda APENAS com JSON válido (sem markdown, sem cercas) neste formato:
+{"questions":[{"question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"correct":0,"explanation":"..."}]}
+
+O campo "correct" é o índice (0-3) da alternativa correta.`;
+
+      const text = await callGemini([{ text: prompt }], { useSearch });
+      const data = extractJson(text);
+      const questions = (data.questions || []).filter(q => q.question && Array.isArray(q.options) && q.options.length >= 2);
+      if (questions.length){
+        const quiz = {
+          id: uid(),
+          title: topic.slice(0, 80),
+          subjectId,
+          questions,
+          createdAt: new Date().toISOString()
+        };
+        state.quizzes.unshift(quiz);
+        save();
+        $('genOutput').innerHTML += `<div class="output-box" style="background:#eff6ff;">
+          ✅ <b>Mini-prova criada</b> com ${questions.length} questões. Veja na aba <b>📝 Provas</b>.
+        </div>`;
+      }
+    }
+
+    state.history.push({ type: 'generate', topic, at: new Date().toISOString() });
+    save();
+    toast('Pronto!');
+  } catch(err){
+    console.error(err);
+    $('genOutput').innerHTML = `<div class="output-box" style="background:#fef2f2;color:#991b1b;">
+      ❌ Erro: ${esc(err.message || String(err))}<br>
+      <small>Se for "GEMINI_API_KEY não configurada", veja o passo 2 na aba Ajustes.</small>
+    </div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '✨ Gerar com IA';
+  }
+}
+
+/* =========================================================
+   PROCESSAR ARQUIVO
+   ========================================================= */
+let currentFile = null;
+
+$('fileDrop').addEventListener('click', () => $('fileInput').click());
+$('fileDrop').addEventListener('dragover', e => {
+  e.preventDefault();
+  $('fileDrop').classList.add('drag');
+});
+$('fileDrop').addEventListener('dragleave', () => $('fileDrop').classList.remove('drag'));
+$('fileDrop').addEventListener('drop', e => {
+  e.preventDefault();
+  $('fileDrop').classList.remove('drag');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+$('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+function handleFile(file){
+  const MB = 1024 * 1024;
+  if (file.size > 3 * MB){
+    toast('Arquivo maior que 3 MB');
+    return;
+  }
+  const allowed = ['application/pdf', 'text/plain', 'text/markdown'];
+  const isTxt = file.name.toLowerCase().match(/\.(txt|md)$/);
+  if (!allowed.includes(file.type) && !isTxt){
+    toast('Envie apenas PDF ou TXT');
+    return;
+  }
+  currentFile = file;
+  $('fileInfo').innerHTML = `📎 <b>${esc(file.name)}</b> — ${(file.size/1024).toFixed(0)} KB`;
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const s = String(r.result);
+      const base64 = s.includes(',') ? s.split(',')[1] : s;
+      resolve(base64);
+    };
+    r.onerror = () => reject(new Error('Falha ao ler arquivo'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function processFile(){
+  if (!currentFile){ toast('Escolha um arquivo primeiro'); return; }
+
+  const wantSummary = $('fSummary').checked;
+  const wantCards = $('fCards').checked;
+  const wantQuiz = $('fQuiz').checked;
+  if (!wantSummary && !wantCards && !wantQuiz){
+    toast('Marque ao menos uma opção'); return;
+  }
+  const question = $('fQuestion').value.trim();
+  const subjectId = $('fSubject').value;
+  const cardCount = Number($('fCardCount').value);
+
+  const btn = $('btnFile');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analisando...';
+  $('fileOutput').innerHTML = '<div class="output-box" style="text-align:center;">⏳ Enviando para a IA...</div>';
+
+  try {
+    const base64 = await fileToBase64(currentFile);
+    const mime = currentFile.type || (currentFile.name.endsWith('.pdf') ? 'application/pdf' : 'text/plain');
+    const inlineData = { inline_data: { mime_type: mime, data: base64 } };
+
+    // 1) Resumo/explicação
+    if (wantSummary){
+      let prompt = `Analise o arquivo em anexo e faça um resumo explicativo completo, em português do Brasil. Use títulos, listas e destaques em **negrito**. Destaque pontos importantes.`;
+      if (question) prompt += `\n\nAlém do resumo, responda especificamente: "${question}"`;
+      const text = await callGemini([{ text: prompt }, inlineData], { useSearch: false });
+      $('fileOutput').innerHTML = `<div class="output-box">${mdToHtml(text)}</div>`;
+    }
+
+    // 2) Flashcards
+    if (wantCards){
+      const prompt = `Com base no arquivo em anexo, gere ${cardCount} flashcards de estudo.
+Cada um com "front" (pergunta curta) e "back" (resposta direta).
+Idioma: português do Brasil.
+Responda APENAS com JSON: {"flashcards":[{"front":"...","back":"..."}]}`;
+      const text = await callGemini([{ text: prompt }, inlineData], { jsonMode: true });
+      const data = extractJson(text);
+      const cards = data.flashcards || [];
+      let n = 0;
+      cards.forEach(c => {
+        if (!c.front || !c.back) return;
+        state.cards.push({
+          id: uid(),
+          subjectId,
+          topic: currentFile.name,
+          front: String(c.front).trim(),
+          back: String(c.back).trim(),
+          ease: 2.5, interval: 0, reps: 0,
+          nextReview: isoDate(),
+          createdAt: new Date().toISOString()
+        });
+        n++;
+      });
+      save();
+      $('fileOutput').innerHTML += `<div class="output-box" style="background:#ecfdf5;">
+        ✅ <b>${n} flashcards adicionados.</b> Veja na aba 🃏 Cards.
+      </div>`;
+    }
+
+    // 3) Prova
+    if (wantQuiz){
+      const prompt = `Com base no arquivo em anexo, crie uma mini-prova com 5 questões de múltipla escolha.
+Cada questão tem 4 alternativas (A, B, C, D), apenas uma correta, e uma explicação curta.
+Idioma: português do Brasil.
+Responda APENAS com JSON: {"questions":[{"question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"correct":0,"explanation":"..."}]}`;
+      const text = await callGemini([{ text: prompt }, inlineData], { jsonMode: true });
+      const data = extractJson(text);
+      const questions = (data.questions || []).filter(q => q.question && Array.isArray(q.options));
+      if (questions.length){
+        state.quizzes.unshift({
+          id: uid(),
+          title: currentFile.name.slice(0, 80),
+          subjectId,
+          questions,
+          createdAt: new Date().toISOString()
+        });
+        save();
+        $('fileOutput').innerHTML += `<div class="output-box" style="background:#eff6ff;">
+          ✅ <b>Mini-prova criada</b> com ${questions.length} questões. Veja na aba 📝 Provas.
+        </div>`;
+      }
+    }
+
+    state.history.push({ type: 'file', name: currentFile.name, at: new Date().toISOString() });
+    save();
+    toast('Análise concluída!');
+  } catch(err){
+    console.error(err);
+    $('fileOutput').innerHTML = `<div class="output-box" style="background:#fef2f2;color:#991b1b;">
+      ❌ Erro: ${esc(err.message || String(err))}
+    </div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '📖 Analisar com IA';
+  }
+}
+
+/* =========================================================
+   CARDS — Revisão espaçada (SM-2 simplificado)
+   ========================================================= */
+let reviewQueue = [];
+let reviewIndex = 0;
+let reviewFlipped = false;
+
+function dueCards(){
+  const t = isoDate();
+  return state.cards.filter(c => !c.nextReview || c.nextReview <= t);
+}
+
+function renderCards(){
+  const due = dueCards();
+  const total = state.cards.length;
+  $('cardsDueText').textContent = total === 0
+    ? 'Você ainda não tem cards. Gere na aba 🎯 ou 📄.'
+    : due.length === 0
+      ? `Tudo em dia! Total: ${total} card${total===1?'':'s'}.`
+      : `Você tem ${due.length} card${due.length===1?'':'s'} para revisar hoje (de ${total}).`;
+
+  const area = $('cardsReviewArea');
+  if (due.length === 0){
+    area.innerHTML = total === 0
+      ? `<div class="empty" style="padding:20px;"><span class="big">🃏</span>Sem cards ainda.</div>`
+      : `<div class="empty" style="padding:20px;"><span class="big">✅</span>Nada para revisar hoje.</div>`;
+    reviewQueue = [];
+  } else {
+    if (!reviewQueue.length || reviewIndex >= reviewQueue.length){
+      reviewQueue = [...due].sort(() => Math.random() - 0.5).slice(0, 20);
+      reviewIndex = 0;
+      reviewFlipped = false;
+    }
+    renderReviewCard();
+  }
+  renderCardsList();
+}
+
+function renderReviewCard(){
+  const area = $('cardsReviewArea');
+  if (reviewIndex >= reviewQueue.length){
+    area.innerHTML = `<div class="empty" style="padding:20px;"><span class="big">🎉</span>Revisão concluída!</div>`;
+    reviewQueue = [];
+    return;
+  }
+  const c = reviewQueue[reviewIndex];
+  const front = reviewFlipped ? c.back : c.front;
+  const label = reviewFlipped ? 'Verso' : 'Frente';
+  area.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:.78rem;color:var(--muted);font-weight:700;">
+      <span>${subjectTag(c.subjectId)}</span>
+      <span>${reviewIndex+1} / ${reviewQueue.length}</span>
+    </div>
+    <div class="flashcard ${reviewFlipped?'flipped':''}" onclick="flipCard()">
+      <div>
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px;font-weight:800;">${label}</div>
+        ${esc(front)}
+      </div>
+    </div>
+    ${reviewFlipped
+      ? `<div class="fc-actions">
+          <button class="again" onclick="rateCard('again')">Errei</button>
+          <button class="hard" onclick="rateCard('hard')">Difícil</button>
+          <button class="good" onclick="rateCard('good')">Bom</button>
+          <button class="easy" onclick="rateCard('easy')">Fácil</button>
+        </div>`
+      : `<button class="btn ghost" style="width:100%;margin-top:14px;" onclick="flipCard()">👁️ Ver resposta</button>`}
+  `;
+}
+
+function flipCard(){ reviewFlipped = !reviewFlipped; renderReviewCard(); }
+
+function rateCard(rating){
+  const c = reviewQueue[reviewIndex];
+  if (!c) return;
+  let ease = c.ease ?? 2.5, interval = c.interval ?? 0, reps = c.reps ?? 0;
+  if (rating === 'again'){ ease = Math.max(1.3, ease - 0.2); interval = 1; reps = 0; }
+  else if (rating === 'hard'){ ease = Math.max(1.3, ease - 0.15); interval = interval ? Math.max(1, Math.round(interval*1.2)) : 1; reps++; }
+  else if (rating === 'good'){ interval = interval ? Math.round(interval*ease) : 1; reps++; }
+  else if (rating === 'easy'){ ease = Math.min(3, ease+0.15); interval = interval ? Math.round(interval*ease*1.4) : 2; reps++; }
+
+  const next = new Date(); next.setDate(next.getDate() + interval);
+  c.ease = ease; c.interval = interval; c.reps = reps;
+  c.lastReview = isoDate(); c.nextReview = isoDate(next);
+  save();
+  reviewIndex++;
+  reviewFlipped = false;
+  renderReviewCard();
+  renderCardsList();
+}
+
+function renderCardsList(){
+  const q = ($('cardsFilter')?.value || '').trim().toLowerCase();
+  const list = state.cards.filter(c => {
+    if (!q) return true;
+    return (c.front + ' ' + c.back).toLowerCase().includes(q);
+  });
+  $('cardsCount').textContent = `(${state.cards.length})`;
+  const el = $('cardsList');
+  if (!list.length){
+    el.innerHTML = `<div class="empty" style="padding:20px;">Nenhum card para mostrar.</div>`;
+    return;
+  }
+  el.innerHTML = list.map(c => {
+    const due = !c.nextReview || c.nextReview <= isoDate();
+    return `<div class="card-row">
+      ${subjectTag(c.subjectId)}
+      <div class="info">
+        <div class="front">${esc(c.front)}</div>
+        <div class="back">${esc(c.back)}</div>
+        <div style="margin-top:6px;font-size:.72rem;color:var(--muted);font-weight:700;">
+          ${due ? '⏰ Hoje' : '📅 ' + (c.nextReview||'').split('-').reverse().join('/')}
+        </div>
+      </div>
+      <button class="btn small ghost danger" onclick="deleteCard('${c.id}')">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteCard(id){
+  if (!confirm('Excluir este card?')) return;
+  state.cards = state.cards.filter(c => c.id !== id);
+  save();
+  renderCards();
+}
+
+/* =========================================================
+   PROVAS
+   ========================================================= */
+function renderQuizzes(){
+  const list = $('quizzesList');
+  if (!state.quizzes.length){
+    list.innerHTML = `<div class="empty"><span class="big">📝</span>Nenhuma prova ainda.<br>Gere na aba 🎯 ou 📄.</div>`;
+    return;
+  }
+  list.innerHTML = state.quizzes.map(q => `
+    <div class="card-row" style="align-items:center;">
+      <div class="info">
+        ${subjectTag(q.subjectId)}
+        <div class="front">${esc(q.title)}</div>
+        <div class="back">${q.questions.length} questões · ${new Date(q.createdAt).toLocaleDateString('pt-BR')}</div>
+      </div>
+      <button class="btn small primary" onclick="openQuiz('${q.id}')">Fazer</button>
+      <button class="btn small ghost danger" onclick="deleteQuiz('${q.id}')">🗑️</button>
+    </div>
+  `).join('');
+}
+
+function deleteQuiz(id){
+  if (!confirm('Excluir esta prova?')) return;
+  state.quizzes = state.quizzes.filter(q => q.id !== id);
+  save();
+  renderQuizzes();
+}
+
+function openQuiz(id){
+  const quiz = state.quizzes.find(q => q.id === id);
+  if (!quiz) return;
+  const answers = new Array(quiz.questions.length).fill(null);
+  let submitted = false;
+
+  function draw(){
+    const html = `
+      <h2 style="margin-bottom:14px;">📝 ${esc(quiz.title)}</h2>
+      ${quiz.questions.map((q, i) => `
+        <div class="quiz-q" data-q="${i}">
+          <div class="qt">${i+1}. ${esc(q.question)}</div>
+          ${q.options.map((opt, j) => {
+            const sel = answers[i] === j ? 'selected' : '';
+            let extra = '';
+            if (submitted){
+              if (j === q.correct) extra = 'correct';
+              else if (answers[i] === j) extra = 'wrong';
+            }
+            return `<div class="quiz-opt ${sel} ${extra}" data-q="${i}" data-opt="${j}">${esc(opt)}</div>`;
+          }).join('')}
+          ${submitted ? `<div class="quiz-expl"><b>Explicação:</b> ${esc(q.explanation || '')}</div>` : ''}
+        </div>
+      `).join('')}
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        ${!submitted ? `<button class="btn primary" style="flex:1;" id="btnSubmitQuiz">Enviar respostas</button>` : ''}
+        <button class="btn ghost" style="flex:1;" onclick="closeModal()">Fechar</button>
+      </div>
+      ${submitted ? `<div style="margin-top:14px;font-size:.9rem;text-align:center;font-weight:800;">
+        Acertos: ${quiz.questions.reduce((a,q,i)=>a+(answers[i]===q.correct?1:0),0)} / ${quiz.questions.length}
+      </div>` : ''}
+    `;
+    $('modalContent').innerHTML = html;
+    $('modal').classList.add('show');
+
+    if (!submitted){
+      document.querySelectorAll('.quiz-opt').forEach(el => {
+        el.onclick = () => {
+          const qi = Number(el.dataset.q);
+          const oi = Number(el.dataset.opt);
+          answers[qi] = oi;
+          draw();
+        };
+      });
+      const btn = $('btnSubmitQuiz');
+      if (btn) btn.onclick = () => { submitted = true; draw(); };
+    }
+  }
+  draw();
+}
+
+function closeModal(){
+  $('modal').classList.remove('show');
+}
+
+/* =========================================================
+   ABAS
+   ========================================================= */
+function goTo(view){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  ['generate','file','cards','quizzes','config'].forEach(v => $('view-'+v).hidden = v !== view);
+  window.scrollTo({top:0,behavior:'smooth'});
+  if (view === 'cards') renderCards();
+  if (view === 'quizzes') renderQuizzes();
+  if (view === 'config') renderStats();
+}
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => goTo(tab.dataset.view));
+});
+
+/* =========================================================
+   API CHECK
+   ========================================================= */
+async function checkApi(){
+  const badge = $('apiStatus');
+  const box = $('configStatus');
+  badge.textContent = '● Verificando...';
+  badge.className = 'api-status check';
+  box.innerHTML = '⏳ Testando...';
+  try {
+    const text = await callGemini([{ text: 'Responda apenas: OK' }], { jsonMode: false });
+    badge.textContent = '● Conectado';
+    badge.className = 'api-status ok';
+    box.innerHTML = `<div class="output-box" style="background:#ecfdf5;color:#065f46;">
+      ✅ Conexão funcionando.<br>Resposta da IA: <code>${esc(text.slice(0,80))}</code>
+    </div>`;
+  } catch(err){
+    badge.textContent = '● Erro';
+    badge.className = 'api-status bad';
+    box.innerHTML = `<div class="output-box" style="background:#fef2f2;color:#991b1b;">
+      ❌ ${esc(err.message || String(err))}<br><br>
+      <small>Provavelmente a variável <code>GEMINI_API_KEY</code> não está configurada no Vercel. Veja o Passo 2.</small>
+    </div>`;
+  }
+}
+
+/* =========================================================
+   STATS / BACKUP
+   ========================================================= */
+function renderStats(){
+  const totalCards = state.cards.length;
+  const due = dueCards().length;
+  const quizzes = state.quizzes.length;
+  $('statsBox').innerHTML = `
+    🃏 <b>${totalCards}</b> flashcards · <b>${due}</b> para revisar hoje<br>
+    📝 <b>${quizzes}</b> provas salvas<br>
+    🕐 <b>${state.history.length}</b> gerações feitas
+  `;
+}
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `estuda-ia-${isoDate()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup baixado');
+}
+
+function wipeData(){
+  if (!confirm('Apagar TODOS os cards e provas?')) return;
+  if (!confirm('Tem certeza mesmo?')) return;
+  state = defaultState();
+  save();
+  toast('Dados apagados');
+  goTo('generate');
+}
+
+/* =========================================================
+   INICIALIZAÇÃO
+   ========================================================= */
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+renderStats();
+checkApi();
+</script>
+
+<!-- Modal -->
+<div class="modal-back" id="modal" onclick="if(event.target.id==='modal')closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+</body>
+</html>
