@@ -445,9 +445,16 @@ async function callGemini(parts, opts = {}){
       jsonMode: !!opts.jsonMode
     })
   });
-  if (!r.ok){
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.error || `Erro ${r.status}`);
+   const data = await r.json().catch(() => ({}));
+  if (!r.ok || data.error){
+    let msg = 'Erro desconhecido';
+    if (typeof data.error === 'string') msg = data.error;
+    else if (data.error?.message) msg = data.error.message;
+    else if (data.error) msg = JSON.stringify(data.error);
+    else if (data.details?.message) msg = data.details.message;
+    else if (data.details) msg = JSON.stringify(data.details);
+    if (data.hint) msg += ' — ' + data.hint;
+    throw new Error(msg);
   }
   const data = await r.json();
   if (data.error){ throw new Error(data.error.message || JSON.stringify(data.error)); }
