@@ -436,6 +436,40 @@ function mdToHtml(text){
    CHAMADA À IA (via função serverless)
    ========================================================= */
 async function callGemini(parts, opts = {}){
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+  try {
+    const r = await fetch('/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        parts,
+        useSearch: !!opts.useSearch,
+        jsonMode: !!opts.jsonMode
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || data.error){
+      let msg = 'Erro desconhecido';
+      if (typeof data.error === 'string') msg = data.error;
+      else if (data.error?.message) msg = data.error.message;
+      else if (data.error) msg = JSON.stringify(data.error);
+      if (data.hint) msg += ' — ' + data.hint;
+      throw new Error(msg);
+    }
+    const cand = data.candidates?.[0];
+    if (!cand) throw new Error('Sem resposta da IA');
+    const text = cand.content?.parts?.map(p => p.text).filter(Boolean).join('\n') || '';
+    return text;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') throw new Error('Timeout: a IA demorou mais de 25 segundos');
+    throw err;
+  }
+}
   const r = await fetch('/api/gemini', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1052,10 +1086,11 @@ function wipeData(){
 /* =========================================================
    INICIALIZAÇÃO
    ========================================================= */
+// Remove qualquer Service Worker antigo e nunca mais registra
 if ('serviceWorker' in navigator){
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  });
+  navigator.serviceWorker.getRegistrations()
+    .then(regs => regs.forEach(r => r.unregister()))
+    .catch(() => {});
 }
 renderStats();
 checkApi();
